@@ -13,8 +13,15 @@ class Resizer
 
     public function __call($name, $args)
     {
-        
-        $this->original_file = array_pop($args);
+        $this->invalidate_cache = false;
+
+        $last_param = array_pop($args);
+        if (gettype($last_param) === 'boolean') {
+            $this->invalidate_cache = $last_param;
+            $this->original_file = array_pop($args);
+        } else {
+            $this->original_file = $last_param;
+        }
         $this->method_name = $name;
         $this->extension = pathinfo($this->original_file)['extension'];
 
@@ -27,6 +34,11 @@ class Resizer
         $generated_file = $this->getStoragePath() . DIRECTORY_SEPARATOR . $unique_name;
 
         $local_file_path = 'public' . DIRECTORY_SEPARATOR . config('resizer.storage_folder') . DIRECTORY_SEPARATOR . $unique_name;
+
+        if (Storage::exists($local_file_path) && $this->invalidate_cache) {
+            Storage::delete($local_file_path);
+        }
+
 
         if (Storage::exists($local_file_path) && time() - Storage::lastModified($local_file_path) < config('resizer.max_ttl')) {
             return Storage::url(config('resizer.storage_folder') . '/' . $unique_name);
