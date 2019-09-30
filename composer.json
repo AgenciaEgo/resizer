@@ -1,7 +1,7 @@
 {
     "name": "ekersten/resizer",
     "description": "Image resizer for Laravel",
-    "license": "license",
+    "license": "MIT",
     "authors": [
         {
             "name": "Eric Kersten",
