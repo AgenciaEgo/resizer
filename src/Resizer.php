@@ -2,61 +2,92 @@
 
 namespace Ekersten\Resizer;
 
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Artisan;
 use Intervention\Image\ImageManagerStatic as Image;
 
 class Resizer
 {
-    public static function __callstatic($name, $args)
+
+    private $ignored_extensions = ['svg', 'gif'];
+
+    public function __call($name, $args)
     {
-        $file = array_pop($args);
-        $is_external = preg_match('/http(s?):\/\//m', $file) > 0 ? true : false;
+        
+        $this->original_file = array_pop($args);
+        $this->method_name = $name;
+        $this->extension = pathinfo($this->original_file)['extension'];
 
-        $filename = basename($file);
-
-        $cacheFolder = 'img_cache';
-        $extension = pathinfo($file)['extension'];
-
-        if (strtolower($extension) == 'svg') {
-            return $file;
+        if (in_array($this->extension, $this->ignored_extensions)) {
+            return $this->original_file;
         }
 
-        if (strtolower($extension) == 'gif') {
-            return $file;
-        }
+        $unique_name = $this->getUniqueName($args);
 
-        if ($is_external) {
-            $filename = md5($file) . '.' . pathinfo($file)['extension'];
-        }
+        $generated_file = $this->getStoragePath() . DIRECTORY_SEPARATOR . $unique_name;
 
-        $unique_name = implode('_', array_merge([$name], $args, [str_slug(str_replace('/', '_', $file))])) . ".{$extension}";
+        $local_file_path = 'public' . DIRECTORY_SEPARATOR . config('resizer.storage_folder') . DIRECTORY_SEPARATOR . $unique_name;
 
-        if (file_exists(public_path('img_cache/' . $unique_name))) {
-            return url('img_cache/' . $unique_name);
+        if (Storage::exists($local_file_path) && time() - Storage::lastModified($local_file_path) < config('resizer.max_ttl')) {
+            return Storage::url(config('resizer.storage_folder') . '/' . $unique_name);
         } else {
-            if ($is_external) {
-                $local_file = storage_path('img_cache/' . str_slug($file));
-                if (!file_exists($local_file)) {
-                    $remote = file_get_contents($file);
-                    file_put_contents($local_file, $remote);
-                }
+            if (preg_match('/http(s?):\/\//m', $this->original_file) > 0 ? true : false) {
+                $local_file = $this->downloadExternalFile();
             } else {
-                if (file_exists(public_path($file))) {
-                    $local_file = $file;
-                } else if (file_exists(public_path('uploads/' . $file))) {
-                    $local_file = public_path('uploads/' . $file);
-                } else {
-                    return '';
+                $local_file = $this->getLocalFilePath();
+                if($local_file === false) {
+                    return $this->original_file;
                 }
             }
+            $method_name = $this->method_name;
+            $new_image = Image::make($local_file)->$method_name(...$args);
+            $new_image->save($generated_file);
+        }
+        
+        return Storage::url(config('resizer.storage_folder') . '/' . $unique_name);
 
-            // if (file_exists($local_file)) {
-            $img = Image::make($local_file)->$name(...$args);
-            $img->save(public_path('img_cache/' . $unique_name));
-            // } else {
-            //     return '';
-            // }
+    }
+
+    private function getStoragePath()
+    {
+        Artisan::call('storage:link');
+        $target_path = 'app' . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . config('resizer.storage_folder');
+        if (!Storage::exists($target_path)) {
+            Storage::makeDirectory($target_path);
         }
 
-        return url('img_cache/' . $unique_name);
+        return storage_path($target_path);
+    }
+
+    private function getUniqueName($args)
+    {
+        $unique_name = str_replace(".{$this->extension}", '', $this->original_file);
+        $unique_name = str_replace('/', '_', $unique_name);
+        $unique_name = str_replace('__', '_', $unique_name);
+        $unique_name = str_slug($unique_name, '_');
+        $unique_name = implode('x', $args) . '_' . $unique_name;
+        $unique_name = $this->method_name . '_' . $unique_name;
+        $unique_name = $unique_name . ".{$this->extension}";
+
+        return $unique_name;
+    }
+
+    private function downloadExternalFile() {
+        $external_filename = md5($this->original_file) . '.' . $this->extension;
+        $local_file = $this->getStoragePath() . DIRECTORY_SEPARATOR . $external_filename;
+        copy($this->original_file, $local_file);
+
+        return $local_file;
+    }
+
+    private function getLocalFilePath()
+    {
+        if (file_exists(realpath(public_path($this->original_file)))) {
+            return realpath(public_path($this->original_file));
+        } else if (file_exists(realpath(storage_path($this->original_file)))) {
+            return realpath(storage_path($this->original_file));
+        } else {
+            return false;
+        }
     }
 }
