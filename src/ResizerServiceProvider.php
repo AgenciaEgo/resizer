@@ -3,6 +3,7 @@
 namespace Ekersten\Resizer;
 
 use Illuminate\Support\ServiceProvider;
+use Ekersten\Resizer\Console\Commands\ClearCacheCommand;
 
 class ResizerServiceProvider extends ServiceProvider
 {
@@ -77,6 +78,8 @@ class ResizerServiceProvider extends ServiceProvider
         ], 'resizer.views');*/
 
         // Registering package commands.
-        // $this->commands([]);
+        $this->commands([
+            ClearCacheCommand::class
+        ]);
     }
 }
