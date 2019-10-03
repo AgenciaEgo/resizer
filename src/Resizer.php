@@ -52,7 +52,13 @@ class Resizer
                 }
             }
             $method_name = $this->method_name;
-            $new_image = Image::make($local_file)->$method_name(...$args);
+            if ($method_name === 'resize') {
+                $new_image = Image::make($local_file)->resize($args[0], $args[1], function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+            } else {
+                $new_image = Image::make($local_file)->$method_name(...$args);
+            }
             $new_image->save($generated_file);
         }
         
