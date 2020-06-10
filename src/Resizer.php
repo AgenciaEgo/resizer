@@ -31,9 +31,9 @@ class Resizer
 
         $unique_name = $this->getUniqueName($args);
 
-        $generated_file = $this->getStoragePath() . DIRECTORY_SEPARATOR . $unique_name;
+        $generated_file = implode(DIRECTORY_SEPARATOR, [$this->getStoragePath(), $unique_name]);
 
-        $local_file_path = 'public' . DIRECTORY_SEPARATOR . config('resizer.storage_folder') . DIRECTORY_SEPARATOR . $unique_name;
+        $local_file_path = implode(DIRECTORY_SEPARATOR, ['public', config('resizer.storage_folder'), $unique_name]);
 
         if (Storage::exists($local_file_path) && $this->invalidate_cache) {
             Storage::delete($local_file_path);
@@ -69,12 +69,11 @@ class Resizer
     private function getStoragePath()
     {
         Artisan::call('storage:link');
-        $target_path = 'app' . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . config('resizer.storage_folder');
-        if (!Storage::exists($target_path)) {
-            Storage::makeDirectory($target_path);
+        if (!Storage::exists(implode(DIRECTORY_SEPARATOR, ['app', 'public', 'resizer']))) {
+            Storage::makeDirectory(implode(DIRECTORY_SEPARATOR, ['public', 'resizer']));
         }
 
-        return storage_path($target_path);
+        return storage_path(implode(DIRECTORY_SEPARATOR, ['app', 'public', 'resizer']));
     }
 
     private function getUniqueName($args)
@@ -92,7 +91,7 @@ class Resizer
 
     private function downloadExternalFile() {
         $external_filename = md5($this->original_file) . '.' . $this->extension;
-        $local_file = $this->getStoragePath() . DIRECTORY_SEPARATOR . $external_filename;
+        $local_file = implode(DIRECTORY_SEPARATOR, [$this->getStoragePath(), $external_filename]);
         copy($this->original_file, $local_file);
 
         return $local_file;
