@@ -2,7 +2,7 @@
 
 All notable changes to `Resizer` will be documented in this file.
 
-## Version 1.0
+## Version 1.2
 
 ### Added
-- Everything
+- Support for Illuminate 6

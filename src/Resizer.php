@@ -4,6 +4,7 @@ namespace Ekersten\Resizer;
 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManagerStatic as Image;
 
 class Resizer
@@ -81,7 +82,7 @@ class Resizer
         $unique_name = str_replace(".{$this->extension}", '', $this->original_file);
         $unique_name = str_replace('/', '_', $unique_name);
         $unique_name = str_replace('__', '_', $unique_name);
-        $unique_name = str_slug($unique_name, '_');
+        $unique_name = Str::slug($unique_name, '_');
         $unique_name = implode('x', $args) . '_' . $unique_name;
         $unique_name = $this->method_name . '_' . $unique_name;
         $unique_name = $unique_name . ".{$this->extension}";
